@@ -17,8 +17,9 @@ pi = pigpio.pi()
 
 SAVE = 16
 BUZZ = 23
-UNLOCK = 24
+UNLOCK = 26
 LED = 27
+SERVO = 22
 
 pi.set_mode(SAVE, pigpio.INPUT)
 pi.set_pull_up_down(SAVE, pigpio.PUD_UP)
@@ -63,10 +64,10 @@ def read_button(event):
         time.sleep(0.08)
 
 def enter_code():
-    reading_codes = []
     is_pressing_read_btn = not pi.read(UNLOCK)
     count = 0
     compteur = 0
+    reading_codes = []
 
     while len(reading_codes) < 3:
         current_voltage = 0
@@ -88,30 +89,49 @@ def enter_code():
                         count += 1
                 else:
                     count = 0 
-        if pi.read(SAVE) == 0:
+        if pi.read(UNLOCK) == 0:
             current_voltage = int(data.voltage*10)
             reading_codes.append(current_voltage)
             time.sleep(0.25)
+            # block long presses 
     return reading_codes
 
 def compare_codes(enter_code, creation_code):
-    if enter_code == creation_code:
-        #code led
-        for i in range(3):
-            pi.write(LED, 1)
-            time.sleep(0.5)
-            pi.write(LED, 0)
+    try:
+        if enter_code == creation_code:
+            #code led
+            for i in range(3):
+                pi.write(LED, 1)
+                time.sleep(0.5)
+                pi.write(LED, 0)
+                
+            #code buzzer
+            pi.write(23,1)
+            time.sleep(1)
+            pi.write(23,0)
+            time.sleep(1)  
+
+            #code matrice
             
-        #code buzzer
-        pi.write(23,1)
-        time.sleep(1)
-        pi.write(23,0)
-        time.sleep(1)    
-        #code matrice
+            
+            #code servo
+            print("Vous avez entrez le bon code. Activation...")
+            pi.set_PWM_dutycycle(SERVO, 2.5)
+            time.sleep(2)
+            pi.set_PWM_dutycycle(SERVO, 12.5)
+
+        else :
+            #code buzzer
+            i = 0
+            for i in range (5): 
+                pi.write(23,1)
+                time.sleep(0.3)
+                pi.write(23,0)
+                time.sleep(0.3)  
+            #code matrice
+            print("Vous avez entrez le mauvais code. Accès refusé.")
+    except KeyboardInterrupt:
+        print("au revoir!")
         
-        #code servo
-        print("Vous avez entrez le bon code. Activation...")
-    else :
-        #code buzzer
-        #code matrice
-        print("Vous avez entrez le mauvais code. Accès refusé.")
+
+        # fermer le servo
